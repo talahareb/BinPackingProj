@@ -5,7 +5,7 @@ class solver_000000(AbstractSolver):
 
     def __init__(self, inst):
         super().__init__(inst)
-        self.name = 'DummySolver'
+        self.name = 'solver_000000'
 
     def solve(self):
         additional_script = AdditionalScript()

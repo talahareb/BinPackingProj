@@ -4,7 +4,7 @@ from instances import Instance
 
 if __name__ == '__main__':
     dataset_name = 'DatasetA'
-    solver_name = 'DummySolver'
+    solver_name = 'solver_000000'
     inst = Instance(dataset_name)
 
     # -------------------------
@@ -61,14 +61,11 @@ if __name__ == '__main__':
         vehicle_type = f"V{group.iloc[0]['type_vehicle']}"
         vehicle = vehicles_dict[vehicle_type]
 
-        print(f"Vehicle {vidx} ({vehicle_type})")
-
         vehicle_ok = True
         placed_boxes = []
         total_weight = 0
         total_value = 0
 
-        # cost counted only if vehicle used
         total_cost += vehicle["cost"]
 
         for _, row in group.iterrows():
@@ -94,7 +91,8 @@ if __name__ == '__main__':
             if box["x2"] > vehicle["width"] or \
             box["y2"] > vehicle["depth"] or \
             box["z2"] > vehicle["height"]:
-                print(f"  ❌ OUT OF BOUNDS: {item_id}")
+                print(f"\nVehicle {vidx} ({vehicle_type}):")
+                print(f"OUT OF BOUNDS: {item_id}")
                 vehicle_ok = False
 
             # -------------------------
@@ -102,7 +100,8 @@ if __name__ == '__main__':
             # -------------------------
             for other in placed_boxes:
                 if boxes_overlap(box, other):
-                    print(f"  ❌ OVERLAP: {item_id} with {other['id']}")
+                    print(f"\nVehicle {vidx} ({vehicle_type})")
+                    print(f"OVERLAP: {item_id} with {other['id']}")
                     vehicle_ok = False
 
             placed_boxes.append(box)
@@ -114,14 +113,16 @@ if __name__ == '__main__':
         # Weight
         # -------------------------
         if total_weight > vehicle["maxWeight"]:
-            print(f"  ❌ WEIGHT: {total_weight:.2f} > {vehicle['maxWeight']}")
+            print(f"\nVehicle {vidx} ({vehicle_type})")
+            print(f" WEIGHT: {total_weight:.2f} > {vehicle['maxWeight']}")
             vehicle_ok = False
 
         # -------------------------
         # Value
         # -------------------------
         if total_value > vehicle["maxValue"]:
-            print(f"  ❌ VALUE: {total_value:.2f} > {vehicle['maxValue']}")
+            print(f"\nVehicle {vidx} ({vehicle_type})")
+            print(f"VALUE: {total_value:.2f} > {vehicle['maxValue']}")
             vehicle_ok = False
 
         # -------------------------
@@ -147,12 +148,11 @@ if __name__ == '__main__':
             required = box["base_area"] * (gravity / 100.0)
 
             if support_area < required:
-                print(f"  ❌ GRAVITY: {box['id']} supported {support_area:.1f} < {required:.1f}")
+                print(f"\nVehicle {vidx} ({vehicle_type})")
+                print(f"GRAVITY: {box['id']} supported {support_area:.1f} < {required:.1f}")
                 vehicle_ok = False
 
-        if vehicle_ok:
-            print("  ✅ OK")
-        else:
+        if not vehicle_ok:
             feasible = False
     
     # -------------------------
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     missing_items = all_items - placed_item_ids
 
     if missing_items:
-        print(f"❌ MISSING ITEMS: {', '.join(sorted(missing_items))}")
+        print(f"MISSING ITEMS: {', '.join(sorted(missing_items))}")
         feasible = False
 
     # -------------------------
@@ -174,4 +174,4 @@ if __name__ == '__main__':
     if feasible:
         print("✅ FEASIBLE solution")
     else:
-        print("❌ NOT feasible solution")
+        print("❌ INFEASIBLE solution")
