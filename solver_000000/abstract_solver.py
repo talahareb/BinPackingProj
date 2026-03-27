@@ -25,4 +25,9 @@ class AbstractSolver(ABC):
 
     def write_solution_to_file(self):
         df_sol = pd.DataFrame.from_dict(self.sol)
-        df_sol.to_csv(os.path.join('results', f'sol_{self.inst.name}_{self.name}.csv'), index=False)
+        df_sol.to_csv(
+            os.path.join(
+                'results',
+                f'sol_{self.inst.name}_{self.name}.csv'
+            ), index=False
+        )
