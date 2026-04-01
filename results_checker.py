@@ -23,10 +23,10 @@ if __name__ == '__main__':
         rotations = [
             (w, d, h),
             (d, w, h),
-            (w, h, d),
-            (d, h, w),
-            (h, w, d),
             (h, d, w),
+            (d, h, w),
+            (w, h, d),
+            (h, w, d),
         ]
         return rotations[orient]
 

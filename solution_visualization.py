@@ -29,16 +29,16 @@ if __name__ == '__main__':
         elif rot == 1:
             return d, w, h
         elif rot == 2:
-            return w, h, d
-        elif rot == 3:
-            return h, w, d
-        elif rot == 4:
             return h, d, w
-        elif rot == 5:
+        elif rot == 3:
             return d, h, w
+        elif rot == 4:
+            return w, h, d
+        elif rot == 5:
+            return h, w, d
+
         else:
             raise ValueError("Invalid rotation")
-
     # ---------------------------
     # DRAW BOX (ITEM)
     # ---------------------------
