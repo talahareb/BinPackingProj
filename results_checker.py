@@ -81,7 +81,7 @@ if __name__ == '__main__':
             box = {
                 "id": item_id,
                 "x1": x, "y1": y, "z1": z,
-                "x2": x + w, "y2": y + d, "z2": z + h,
+                "x2": x + d, "y2": y + w, "z2": z + h,
                 "base_area": w * d
             }
 
