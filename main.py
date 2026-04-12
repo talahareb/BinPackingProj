@@ -3,7 +3,7 @@ from solver_000000 import solver_000000
 
 if __name__ == '__main__':
 
-    dataset_name = 'DatasetA'
+    dataset_name = 'Dataset1'
 
     inst = Instance(dataset_name)
 
