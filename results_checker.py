@@ -3,7 +3,7 @@ import pandas as pd
 from instances import Instance
 
 if __name__ == '__main__':
-    dataset_name = 'DatasetA'
+    dataset_name = 'Dataset6'
     solver_name = 'solver_000000'
     inst = Instance(dataset_name)
 
@@ -12,7 +12,8 @@ if __name__ == '__main__':
     # -------------------------
     items = inst.df_items
     vehicles = inst.df_vehicles
-    solution = pd.read_csv(os.path.join('results', f'sol_{dataset_name}_{solver_name}.csv'))
+    group_ids = "353146_353145_361313"
+    solution = pd.read_csv(os.path.join('results', f'sol_{dataset_name}_{group_ids}.csv'))
 
     # -------------------------
     # Helpers

@@ -24,10 +24,12 @@ class AbstractSolver(ABC):
         pass
 
     def write_solution_to_file(self):
+        group_ids = "353146_353145_361313"
         df_sol = pd.DataFrame.from_dict(self.sol)
         df_sol.to_csv(
             os.path.join(
                 'results',
-                f'sol_{self.inst.name}_{self.name}.csv'
-            ), index=False
+                f'sol_{self.inst.name}_{group_ids}.csv'
+            ),
+            index=False
         )
