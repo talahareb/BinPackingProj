@@ -4,7 +4,7 @@ from instances import Instance
 
 if __name__ == '__main__':
     dataset_name = 'Dataset6'
-    solver_name = 'solver_000000'
+    solver_name = 'solver_353146_353145_361313'
     inst = Instance(dataset_name)
 
     # -------------------------
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     items = inst.df_items
     vehicles = inst.df_vehicles
     group_ids = "353146_353145_361313"
-    solution = pd.read_csv(os.path.join('results', f'sol_{dataset_name}_{group_ids}.csv'))
+    solution = pd.read_csv(os.path.join('results', f'sol_{dataset_name}_{solver_name}.csv'))
 
     # -------------------------
     # Helpers

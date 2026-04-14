@@ -1,12 +1,12 @@
 from instances import Instance
-from solver_000000 import solver_000000
+from solver_353146_353145_361313 import solver_353146_353145_361313
 
 if __name__ == '__main__':
 
-    dataset_name = 'Dataset6'
+    dataset_name = 'Dataset9'
 
     inst = Instance(dataset_name)
 
-    solver = solver_000000(inst)
+    solver = solver_353146_353145_361313(inst)
 
     solver.solve()
