@@ -118,7 +118,7 @@ dove `XXXXXX`, `YYYYYY` e `ZZZZZZ` sono i numeri di matricola dei membri del gru
 All'interno della cartella devono essere presenti:
 
 - un file soluzione  
-  `sol_DatasetN_XXXXXX_YYYYYY_ZZZZZZ.csv`  
+  `sol_DatasetN_solver_XXXXXX_YYYYYY_ZZZZZZ.csv`  
   per ciascun `DatasetN`;
 
 - il solver  
@@ -136,7 +136,7 @@ All'interno del solver deve essere presente una classe con lo stesso nome del fi
 
 `class solver_XXXXXX_YYYYYY_ZZZZZZ():`
 
-In questa classe è necessario implementare il metodo `solve()`, che non deve prendere nulla in input (i dati necessari sono presenti in `self.inst`) e non deve restituire nulla come output, ma deve occuparsi di creare il file soluzione `sol_DatasetN_XXXXXX_YYYYYY_ZZZZZZ.csv` (per `DatasetN`).
+In questa classe è necessario implementare il metodo `solve()`, che non deve prendere nulla in input (i dati necessari sono presenti in `self.inst`) e non deve restituire nulla come output, ma deve occuparsi di creare il file soluzione `sol_DatasetN_solver_XXXXXX_YYYYYY_ZZZZZZ.csv` (per `DatasetN`).
 
 (È facoltativo, ma caldamente consigliato, includere nella cartella compressa il file `abstract_solver.py` - fornito nella cartella esempio `solver_000000/` - e far sì che il proprio solver erediti dalla classe `AbstractSolver()` in esso contenuta. Questo permette di accedere al metodo `write_solution_to_file()` per creare correttamente il file soluzione.)
 

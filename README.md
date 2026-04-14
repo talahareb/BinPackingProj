@@ -121,7 +121,7 @@ where `XXXXXX`, `YYYYYY` and `ZZZZZZ` are the student ID numbers of the group me
 Inside the folder there must be:
 
 - a solution file  
-  `sol_DatasetN_XXXXXX_YYYYYY_ZZZZZZ.csv`  
+  `sol_DatasetN_solver_XXXXXX_YYYYYY_ZZZZZZ.csv`  
   for each `DatasetN`;
 
 - the solver  
@@ -139,7 +139,7 @@ Inside the solver there must be a class with the same name as the file that cont
 
 `class solver_XXXXXX_YYYYYY_ZZZZZZ():`
 
-In this class it is necessary to implement the method `solve()`, which must not take anything as input (the necessary data are present in `self.inst`) and must not return anything as output, but must take care of creating the solution file `sol_DatasetN_XXXXXX_YYYYYY_ZZZZZZ.csv` (for `DatasetN`).
+In this class it is necessary to implement the method `solve()`, which must not take anything as input (the necessary data are present in `self.inst`) and must not return anything as output, but must take care of creating the solution file `sol_DatasetN_solver_XXXXXX_YYYYYY_ZZZZZZ.csv` (for `DatasetN`).
 
 (Optionally, but strongly recommended, include in the compressed folder the file `abstract_solver.py` - provided in the example folder `solver_000000/` - and make your solver inherit from the class `AbstractSolver()` contained in it. This allows access to the method `write_solution_to_file()` to correctly create the solution file.)
 
