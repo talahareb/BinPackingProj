@@ -3,7 +3,7 @@ import pandas as pd
 from instances import Instance
 
 if __name__ == '__main__':
-    dataset_name = 'DatasetA'
+    dataset_name = 'DatasetD'
     solver_name = 'solver_353146_353145_361313'
     inst = Instance(dataset_name)
 

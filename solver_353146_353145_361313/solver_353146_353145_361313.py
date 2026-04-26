@@ -12,10 +12,11 @@ class solver_353146_353145_361313(AbstractSolver):
         self.name = "solver_353146_353145_361313"
 
         # 30 for testing, 590 for final; assignment allows up to 10 minutes
-        self.TIME_LIMIT_SECONDS = 100.0
+        self.TIME_LIMIT_SECONDS = 590.0
 
         self.EPS = 1e-9
         self.RNG = random.Random(42)
+        self.MAX_POINTS_PER_BIN = 160
 
         self.items_df = self.inst.df_items
         self.vehicles_df = self.inst.df_vehicles
@@ -133,7 +134,9 @@ class solver_353146_353145_361313(AbstractSolver):
             if not inside_existing:
                 valid.add((x, y, z))
 
-        bin_state["points"] = valid
+        # Keep the most promising anchor points to cap geometric overhead.
+        ordered = sorted(valid, key=lambda p: (p[2], p[0] + p[1], p[0], p[1]))
+        bin_state["points"] = set(ordered[: self.MAX_POINTS_PER_BIN])
 
     def support_area(self, box, placed_boxes):
         if box["z1"] <= self.EPS:
@@ -226,6 +229,10 @@ class solver_353146_353145_361313(AbstractSolver):
             (box["x2"], box["y1"], box["z1"]),
             (box["x1"], box["y2"], box["z1"]),
             (box["x1"], box["y1"], box["z2"]),
+            (box["x2"], box["y2"], box["z1"]),
+            (box["x2"], box["y1"], box["z2"]),
+            (box["x1"], box["y2"], box["z2"]),
+            (box["x2"], box["y2"], box["z2"]),
         ]
 
         for p in candidates:
@@ -276,7 +283,15 @@ class solver_353146_353145_361313(AbstractSolver):
                 if placement is None:
                     continue
 
-                total_score = 100000.0 + 1000.0 * v["cost"] + placement["score"]
+                vol_ratio = item["volume"] / max(v["volume"], self.EPS)
+                wt_ratio = item["weight"] / max(v["maxWeight"], self.EPS)
+                val_ratio = item["value"] / max(v["maxValue"], self.EPS)
+                min_fill_ratio = max(vol_ratio, wt_ratio, val_ratio)
+
+                # Prefer cheaper vehicles, but account for how much of the bin
+                # capacity this item consumes to avoid opening many tiny bins.
+                opening_obj = v["cost"] * min_fill_ratio
+                total_score = 100000.0 + 2000.0 * opening_obj + 20.0 * v["cost"] + placement["score"]
 
                 if best_for_vehicle is None or total_score < best_for_vehicle["total_score"]:
                     best_for_vehicle = {
@@ -331,6 +346,11 @@ class solver_353146_353145_361313(AbstractSolver):
     def solution_cost(self, bins):
         return sum(b["spec"]["cost"] for b in bins)
 
+    def reindex_bins(self, bins):
+        for i, b in enumerate(bins):
+            b["idx_vehicle"] = i
+        return bins
+
     def convert_bins_to_sol(self, bins):
         sol = {
             "type_vehicle": [],
@@ -353,6 +373,193 @@ class solver_353146_353145_361313(AbstractSolver):
                 sol["orient"].append(box["orient"])
 
         return sol
+
+    def repack_items_into_vehicle(self, items_to_pack, vehicle_spec, idx_vehicle, deadline_ts):
+        if time.time() >= deadline_ts:
+            return None
+
+        bin_state = self.make_empty_bin(vehicle_spec, idx_vehicle)
+        ordered = sorted(
+            items_to_pack,
+            key=lambda it: (-it["volume"], -it["base_area"], -it["weight"], it["id"]),
+        )
+
+        for item in ordered:
+            best = None
+            candidate_points = sorted(
+                list(bin_state["points"]),
+                key=lambda p: (p[2], p[0] + p[1], p[0], p[1]),
+            )
+            for orient_char in item["allowedRotations"]:
+                orient = int(orient_char)
+                for point in candidate_points:
+                    placement = self.feasible_placement(bin_state, item, orient, point)
+                    if placement is None:
+                        continue
+                    if best is None or placement["score"] < best["score"]:
+                        best = placement
+
+            if best is None:
+                return None
+            self.add_box_to_bin(bin_state, best)
+
+        return bin_state
+
+    def try_downsize_bin_types(self, bins, deadline_ts):
+        improved = False
+        items_by_id = {it["id"]: it for it in self.items}
+
+        for i, old_bin in enumerate(bins):
+            if time.time() >= deadline_ts:
+                break
+
+            old_cost = old_bin["spec"]["cost"]
+            if old_cost <= 0:
+                continue
+
+            packed_items = [items_by_id[box["id_item"]] for box in old_bin["placed"]]
+            cheaper_types = [v for v in self.vehicle_types_sorted if v["cost"] + self.EPS < old_cost]
+
+            for candidate in cheaper_types:
+                if time.time() >= deadline_ts:
+                    break
+                repacked = self.repack_items_into_vehicle(packed_items, candidate, old_bin["idx_vehicle"], deadline_ts)
+                if repacked is not None:
+                    bins[i] = repacked
+                    improved = True
+                    break
+
+        return improved
+
+    def try_eliminate_expensive_bins(self, bins, deadline_ts):
+        improved = False
+        items_by_id = {it["id"]: it for it in self.items}
+
+        source_order = sorted(
+            range(len(bins)),
+            key=lambda idx: (bins[idx]["spec"]["cost"], len(bins[idx]["placed"])),
+            reverse=True,
+        )
+
+        for src_idx in source_order:
+            if src_idx >= len(bins):
+                continue
+            if time.time() >= deadline_ts:
+                break
+
+            source_bin = bins[src_idx]
+            movable_items = [items_by_id[box["id_item"]] for box in source_bin["placed"]]
+            movable_items.sort(key=lambda it: (-it["volume"], -it["weight"], it["id"]))
+
+            working_bins = deepcopy([b for j, b in enumerate(bins) if j != src_idx])
+            success = True
+            for item in movable_items:
+                if time.time() >= deadline_ts:
+                    success = False
+                    break
+
+                option = self.try_place_in_existing_bins(working_bins, item)
+                if option is None:
+                    success = False
+                    break
+                self.add_box_to_bin(working_bins[option["bin_index"]], option["placement"])
+
+            if success:
+                bins[:] = self.reindex_bins(working_bins)
+                improved = True
+
+        return improved
+
+    def try_pairwise_bin_merge(self, bins, deadline_ts):
+        if len(bins) < 2:
+            return False
+
+        items_by_id = {it["id"]: it for it in self.items}
+        expensive_indices = sorted(
+            range(len(bins)),
+            key=lambda i: (bins[i]["spec"]["cost"], len(bins[i]["placed"])),
+            reverse=True,
+        )[:8]
+
+        attempts = 0
+        for a in range(len(expensive_indices)):
+            for b in range(a + 1, len(expensive_indices)):
+                if time.time() >= deadline_ts:
+                    return False
+                attempts += 1
+                if attempts > 18:
+                    return False
+
+                i = expensive_indices[a]
+                j = expensive_indices[b]
+                if i == j:
+                    continue
+
+                cost_ij = bins[i]["spec"]["cost"] + bins[j]["spec"]["cost"]
+                pair_items = [
+                    items_by_id[box["id_item"]]
+                    for box in bins[i]["placed"] + bins[j]["placed"]
+                ]
+
+                cheaper_candidates = [v for v in self.vehicle_types_sorted if v["cost"] + self.EPS < cost_ij]
+                if not cheaper_candidates:
+                    continue
+
+                merged_bin = None
+                for v in cheaper_candidates:
+                    if time.time() >= deadline_ts:
+                        return False
+                    candidate = self.repack_items_into_vehicle(pair_items, v, 0, deadline_ts)
+                    if candidate is not None:
+                        merged_bin = candidate
+                        break
+
+                if merged_bin is None:
+                    continue
+
+                new_bins = []
+                for idx, existing in enumerate(bins):
+                    if idx == i or idx == j:
+                        continue
+                    new_bins.append(deepcopy(existing))
+                new_bins.append(merged_bin)
+                bins[:] = self.reindex_bins(new_bins)
+                return True
+
+        return False
+
+    def local_improvement(self, bins, deadline_ts):
+        if not bins:
+            return bins
+
+        best_bins = deepcopy(bins)
+        best_cost = self.solution_cost(best_bins)
+
+        rounds = 0
+        while time.time() < deadline_ts and rounds < 6:
+            rounds += 1
+            candidate = deepcopy(best_bins)
+            changed = False
+
+            if self.try_downsize_bin_types(candidate, deadline_ts):
+                changed = True
+            if self.try_eliminate_expensive_bins(candidate, deadline_ts):
+                changed = True
+            if self.try_pairwise_bin_merge(candidate, deadline_ts):
+                changed = True
+
+            if not changed:
+                break
+
+            candidate = self.reindex_bins(candidate)
+            cand_cost = self.solution_cost(candidate)
+            if cand_cost + self.EPS < best_cost:
+                best_bins = candidate
+                best_cost = cand_cost
+            else:
+                break
+
+        return best_bins
 
     def constructive_attempt(self, ordered_items, start_time):
         bins = []
@@ -411,6 +618,7 @@ class solver_353146_353145_361313(AbstractSolver):
 
     def solve(self):
         start_time = time.time()
+        global_deadline = start_time + self.TIME_LIMIT_SECONDS
 
         strategies = [
             "volume",
@@ -424,9 +632,19 @@ class solver_353146_353145_361313(AbstractSolver):
         best_bins = None
         best_cost = float("inf")
         best_num_bins = float("inf")
+        elite_candidates = []
+
+        n_items = len(self.items)
+        if n_items <= 80:
+            constructive_ratio = 0.90
+        elif n_items <= 220:
+            constructive_ratio = 0.87
+        else:
+            constructive_ratio = 0.84
 
         strat_index = 0
-        while time.time() - start_time < self.TIME_LIMIT_SECONDS:
+        constructive_deadline = start_time + constructive_ratio * self.TIME_LIMIT_SECONDS
+        while time.time() < constructive_deadline:
             strategy = strategies[strat_index % len(strategies)]
             strat_index += 1
 
@@ -452,8 +670,46 @@ class solver_353146_353145_361313(AbstractSolver):
                     best_bins = deepcopy(bins)
                     best_num_bins = num_bins
 
+            elite_candidates.append((cost, num_bins, deepcopy(bins)))
+            elite_candidates.sort(key=lambda x: (x[0], x[1]))
+            if len(elite_candidates) > 4:
+                elite_candidates = elite_candidates[:4]
+
         if best_bins is None:
             best_bins = self.fallback_solution()
+        else:
+            pools = [best_bins] + [cand[2] for cand in elite_candidates]
+            # Keep only unique candidate signatures (cost, number of bins).
+            seen = set()
+            unique_pools = []
+            for cand_bins in pools:
+                sig = (round(self.solution_cost(cand_bins), 3), len(cand_bins))
+                if sig in seen:
+                    continue
+                seen.add(sig)
+                unique_pools.append(cand_bins)
+
+            for i, cand_bins in enumerate(unique_pools):
+                now = time.time()
+                if now >= global_deadline:
+                    break
+                remaining_candidates = len(unique_pools) - i
+                remaining_time = max(0.0, global_deadline - now)
+                # Prioritize refining incumbent best; it is usually the most
+                # promising candidate and benefits from deeper local search.
+                if i == 0 and remaining_candidates > 1:
+                    per_candidate_budget = 0.60 * remaining_time
+                else:
+                    per_candidate_budget = remaining_time / max(1, remaining_candidates)
+                candidate_deadline = min(global_deadline, now + per_candidate_budget)
+
+                improved = self.local_improvement(cand_bins, candidate_deadline)
+                imp_cost = self.solution_cost(improved)
+                imp_bins = len(improved)
+                if imp_cost < best_cost - self.EPS or (abs(imp_cost - best_cost) <= self.EPS and imp_bins < best_num_bins):
+                    best_bins = deepcopy(improved)
+                    best_cost = imp_cost
+                    best_num_bins = imp_bins
 
         self.sol = self.convert_bins_to_sol(best_bins)
         self.write_solution_to_file()

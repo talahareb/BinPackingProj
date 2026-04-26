@@ -7,8 +7,8 @@ from instances import Instance
 from solver_353146_353145_361313 import solver_353146_353145_361313
 
 SOLVER_NAME = "solver_353146_353145_361313"
-# solve() runs until this elapses each call; keep moderate for batch runs
-TIME_LIMIT = 25.0
+# solve() runs until this elapses each call.
+TIME_LIMIT = 100.0
 
 DATASETS = sorted(
     d for d in os.listdir("datasets")
